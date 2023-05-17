@@ -32,7 +32,6 @@ public class DefaultPhoneProvider implements PhoneProvider {
         this.session = session;
         this.config = config;
 
-
         this.service = session.listProviderIds(MessageSenderService.class)
                 .stream().filter(s -> s.equals(config.get("service")))
                 .findFirst().orElse(
