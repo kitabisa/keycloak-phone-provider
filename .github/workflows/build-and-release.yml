@@ -1,0 +1,42 @@
+name: 'build and release'
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin' 
+          java-version: '17'
+      - shell: bash
+        run: mvn clean package -Dmaven.test.skip="true"
+      - name: get semantic tag version and release notes from commit messages
+        id: tag
+        run: |
+          curtag=${GITHUB_REF_NAME}
+          major_minor=$(echo "$curtag" | cut -d'.' -f1-2)
+          patch=$(echo "$curtag" | cut -d'.' -f3)
+          # avoid empty patch number
+          [ -n "$patch" ] && ((patch--)) || patch=".x"
+          prevtag="${major_minor}.${patch}"
+          echo "" > body.log
+          if git tag | grep $prevtag ; then
+            git log -q ${curtag}...${prevtag} --pretty="- %s" -q --no-color >> body.log
+          else
+            git log --pretty="- %s" -q --no-color >> body.log
+          fi
+          line_count=$(cat body.log | wc -l)
+          echo "curtag=$curtag" >> $GITHUB_OUTPUT
+          echo "prevtag=$prevtag" >> $GITHUB_OUTPUT
+          echo "line_count=$line_count" >> $GITHUB_OUTPUT
+      - uses: ncipollo/release-action@v1
+        with:
+          name: ${{ env.GITHUB_REF_NAME }}
+          tag: ${{ env.GITHUB_REF_NAME }}
+          artifacts: "tatget/providers/*.jar"
+          bodyFile: "body.log"
+          token: ${{ secrets.GITHUB_TOKEN }}
