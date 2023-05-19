@@ -40,3 +40,4 @@ jobs:
           artifacts: "target/providers/*.jar"
           bodyFile: "body.log"
           token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
