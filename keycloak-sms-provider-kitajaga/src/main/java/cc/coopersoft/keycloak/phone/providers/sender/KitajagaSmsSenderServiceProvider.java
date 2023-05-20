@@ -21,6 +21,11 @@ public class KitajagaSmsSenderServiceProvider implements MessageSenderService {
 
     @Override
     public void sendSmsMessage(TokenCodeType type, String phoneNumber, String code, int expires, String kind) throws MessageSendException {
+
+        if (kind == null) {
+            kind = "";
+        }
+
         JsonObject bodyObject = Json.createObjectBuilder()
                 .add("token_code_type", type.name())
                 .add("phone_number", phoneNumber)
@@ -30,14 +35,25 @@ public class KitajagaSmsSenderServiceProvider implements MessageSenderService {
                 .add("realm", this.realm.getDisplayName().toLowerCase())
                 .add("channel", this.config.get("channel"))
                 .build();
-        HttpResponse<JsonNode> response = Unirest.post( this.config.get("baseurl") + "/compose")
+
+        String composeUrl = this.config.get("baseurl") + "/compose";
+
+        HttpResponse<JsonNode> response = Unirest.post( composeUrl)
                 .header("accept",  "application/json")
                 .header("content-type", "application/json")
                 .header("KJ-SECRET-KEY", this.config.get("secret"))
-                .body(bodyObject)
+                .body(bodyObject.toString())
                 .asJson();
 
-        System.out.println(response.getBody().getObject().toString());
+        String statusCode = Integer.toString(response.getStatus());
+        if (!response.isSuccess()) {
+            if (response.getBody() != null) {
+                JsonNode rBody = response.getBody();
+                throw new MessageSendException(response.getStatus(), statusCode, rBody.getObject().getString("error"));
+            } else {
+                throw new MessageSendException(response.getStatus(), statusCode, "Error from upstream");
+            }
+        }
     }
 
     @Override
@@ -45,3 +61,4 @@ public class KitajagaSmsSenderServiceProvider implements MessageSenderService {
 
     }
 }
+
